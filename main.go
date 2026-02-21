@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"go-blockchain/block"
+	"go-blockchain/work"
+	"strconv"
 )
 
 func main() {
@@ -14,6 +16,13 @@ func main() {
 		fmt.Printf("Prev. hash: %x\n", block.PrevBlockHash)
 		fmt.Printf("Data: %s\n", block.Data)
 		fmt.Printf("Hash: %x\n", block.Hash)
+		pow := work.NewProofOfWork(&work.BlockData{
+			PrevBlockHash: block.PrevBlockHash,
+			Data:          block.Data,
+			Timestamp:     block.Timestamp,
+			Nonce:         block.Nonce,
+		})
+		fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))
 		fmt.Println()
 	}
 }

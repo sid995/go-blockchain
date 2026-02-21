@@ -3,6 +3,7 @@ package block
 import (
 	"bytes"
 	"crypto/sha256"
+	"go-blockchain/work"
 	"strconv"
 	"time"
 )
@@ -19,6 +20,7 @@ type Block struct {
 	Data          []byte
 	PrevBlockHash []byte
 	Hash          []byte
+	Nonce         int
 }
 
 // Calculating hash value for block
@@ -30,8 +32,18 @@ func (b *Block) SetHash() {
 	b.Hash = hash[:]
 }
 
+// Create new block with expected values and hashes
 func NewBlock(data string, prevBlockHash []byte) *Block {
-	block := &Block{time.Now().Unix(), []byte(data), prevBlockHash, []byte{}}
-	block.SetHash()
+	block := &Block{time.Now().Unix(), []byte(data), prevBlockHash, []byte{}, 0}
+	pow := work.NewProofOfWork(&work.BlockData{
+		PrevBlockHash: block.PrevBlockHash,
+		Data:          block.Data,
+		Timestamp:     block.Timestamp,
+		Nonce:         block.Nonce,
+	})
+	nonce, hash := pow.Run()
+	block.Hash = hash[:]
+	block.Nonce = nonce
+
 	return block
 }
