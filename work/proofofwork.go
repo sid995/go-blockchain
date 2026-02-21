@@ -1,3 +1,6 @@
+// Package work implements proof-of-work (Hashcash-style) mining for blocks.
+// It does not import the block package to avoid an import cycle: block uses
+// work for mining, so work only operates on a minimal BlockData struct.
 package work
 
 import (
@@ -14,9 +17,14 @@ import (
 // ~2^24 hashes per block — realistic demo mining without taking forever.
 const targetBits = 24
 
+// maxNonce is the upper bound for the nonce in the mining loop. We use MaxInt64
+// so that in practice we never hit it; if the target were unreachable the loop
+// would still terminate instead of wrapping.
 var maxNonce = math.MaxInt64
 
-// struct created to avoid import cycle
+// BlockData holds the fields needed to compute and verify proof-of-work. We use
+// this type instead of *block.Block so that the work package does not depend
+// on block, which would create a cycle (block -> work -> block).
 type BlockData struct {
 	PrevBlockHash []byte
 	Data          []byte
@@ -24,23 +32,28 @@ type BlockData struct {
 	Nonce         int
 }
 
+// ProofOfWork holds the block data and the difficulty target. The target is a
+// big integer; a hash is valid only if its value as an integer is less than
+// the target (i.e. has enough leading zero bits).
 type ProofOfWork struct {
-	block  *BlockData // pointer to block
-	target *big.Int   // pointer to target
+	block  *BlockData
+	target *big.Int
 }
 
+// NewProofOfWork builds the PoW target and returns a ProofOfWork ready to Run.
+// The target is 1 << (256 - targetBits), so a 256-bit hash must be below that
+// value — equivalently, the hash must have at least targetBits leading zero bits.
 func NewProofOfWork(b *BlockData) *ProofOfWork {
 	target := big.NewInt(1)
-	// 256 is used below as its the length of the SHA-256 hash in bits
-	// sshifting left gives -> 0x10000000000000000000000000000000000000000000000000000000000
-	// occupies 29 bytes in memory
 	target.Lsh(target, uint(256-targetBits))
 	pow := &ProofOfWork{b, target}
 	return pow
 }
 
-// nonce is a counter from the Hashcash description
-// this is a cryptographic term
+// prepareData serializes the block header plus nonce into a single byte slice
+// that we hash. The order and format must match exactly when mining and when
+// validating, or the re-computed hash would not match. We include targetBits
+// so that changing difficulty invalidates old blocks.
 func (pow *ProofOfWork) prepareData(nonce int) []byte {
 	data := bytes.Join(
 		[][]byte{
@@ -56,8 +69,11 @@ func (pow *ProofOfWork) prepareData(nonce int) []byte {
 	return data
 }
 
+// Run performs mining: it tries nonces starting from 0 until it finds one such
+// that SHA-256(prepareData(nonce)) is below the target. It returns that nonce
+// and the resulting hash so the caller can store them on the block.
 func (pow *ProofOfWork) Run() (int, []byte) {
-	var hashInt big.Int // integer representation of hash
+	var hashInt big.Int
 	var hash [32]byte
 	nonce := 0
 
@@ -69,9 +85,8 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 		hashInt.SetBytes(hash[:])
 		if hashInt.Cmp(pow.target) == -1 {
 			break
-		} else {
-			nonce++
 		}
+		nonce++
 	}
 	fmt.Printf("%x\n", hash)
 	fmt.Print("\n\n")
@@ -79,6 +94,9 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 	return nonce, hash[:]
 }
 
+// Validate recomputes the hash using the block's stored nonce and checks that
+// it is below the target. This allows anyone to verify that the block was
+// actually mined without re-running the full search.
 func (pow *ProofOfWork) Validate() bool {
 	var hashInt big.Int
 
