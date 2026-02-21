@@ -32,3 +32,13 @@ func ReverseBytes(data []byte) {
 		data[i], data[j] = data[j], data[i]
 	}
 }
+
+// SliceOrNil returns nil if s is nil or has length zero, otherwise returns s.
+// Used so the blockchain iterator can represent "no next block" with nil
+// (e.g. after genesis, PrevBlockHash is empty and we set currentHash = nil).
+func SliceOrNil(s []byte) []byte {
+	if len(s) == 0 {
+		return nil
+	}
+	return s
+}

@@ -6,7 +6,9 @@ package block
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/gob"
 	"go-blockchain/work"
+	"log"
 	"strconv"
 	"time"
 )
@@ -56,4 +58,27 @@ func NewBlock(data string, prevBlockHash []byte) *Block {
 	block.Nonce = nonce
 
 	return block
+}
+
+// SerializeBlock encodes the block to bytes using gob so it can be stored in
+// BoltDB. The same encoding is used when reading back with DeserializeBlock.
+func (b *Block) SerializeBlock() []byte {
+	var result bytes.Buffer
+	encoder := gob.NewEncoder(&result)
+	if err := encoder.Encode(b); err != nil {
+		log.Panic(err)
+	}
+
+	return result.Bytes()
+}
+
+// DeserializeBlock decodes a gob-encoded block from d. Callers must pass
+// non-nil data (e.g. the iterator checks encodedBlock == nil before calling).
+func DeserializeBlock(d []byte) *Block {
+	var block Block
+	decoder := gob.NewDecoder(bytes.NewReader(d))
+	if err := decoder.Decode(&block); err != nil {
+		log.Panic(err)
+	}
+	return &block
 }
