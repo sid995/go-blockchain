@@ -7,13 +7,13 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-const dbFile = "blockchain.db"       // path to the BoltDB file
-const blocksBucket = "blocks"        // bucket name for block hash -> serialized block
+const dbFile = "blockchain.db" // path to the BoltDB file
+const blocksBucket = "blocks"  // bucket name for block hash -> serialized block
 
 // Blockchain persists blocks in BoltDB. We store only the chain tip in memory;
 // full blocks are read from the DB when needed (e.g. via the iterator).
 type Blockchain struct {
-	tip []byte   // hash of the latest block; key "l" in the bucket also stores this
+	tip []byte // hash of the latest block; key "l" in the bucket also stores this
 	db  *bolt.DB
 }
 
@@ -145,4 +145,8 @@ func (i *BlockchainIterator) Next() *Block {
 	// yields nil and the next Next() will return nil.
 	i.currentHash = utils.SliceOrNil(block.PrevBlockHash)
 	return block
+}
+
+func (bc *Blockchain) Close() error {
+	return bc.db.Close()
 }
