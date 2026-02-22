@@ -22,14 +22,15 @@ const targetBits = 24
 // would still terminate instead of wrapping.
 var maxNonce = math.MaxInt64
 
-// BlockData holds the fields needed to compute and verify proof-of-work. We use
-// this type instead of *block.Block so that the work package does not depend
-// on block, which would create a cycle (block -> work -> block).
+// BlockData holds the minimal fields needed to compute and verify proof-of-work.
+// We use this type instead of *block.Block so that work does not import block
+// (block -> work -> block would be a cycle). The block package fills this from
+// a Block when mining; callers (e.g. CLI) fill it from a Block when validating.
 type BlockData struct {
-	PrevBlockHash []byte
-	Data          []byte
-	Timestamp     int64
-	Nonce         int
+	PrevBlockHash    []byte // previous block hash for chaining
+	Timestamp        int64  // block time
+	Nonce            int    // found by mining; used when validating
+	TransactionsHash []byte // hash of all tx IDs (from block.HashTransactions)
 }
 
 // ProofOfWork holds the block data and the difficulty target. The target is a
@@ -58,7 +59,7 @@ func (pow *ProofOfWork) prepareData(nonce int) []byte {
 	data := bytes.Join(
 		[][]byte{
 			pow.block.PrevBlockHash,
-			pow.block.Data,
+			pow.block.TransactionsHash,
 			utils.IntToHex(pow.block.Timestamp),
 			utils.IntToHex(int64(targetBits)),
 			utils.IntToHex(int64(nonce)),
@@ -77,7 +78,7 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 	var hash [32]byte
 	nonce := 0
 
-	fmt.Printf("Mining the block containing \"%s\"\n", pow.block.Data)
+	fmt.Printf("Mining the new block\n")
 
 	for nonce < maxNonce {
 		data := pow.prepareData(nonce)

@@ -1,6 +1,7 @@
-// Package utils provides small helpers used across the blockchain packages,
-// such as encoding integers for hashing. Kept in a separate package so block
-// and work can both use it without depending on each other.
+// Package utils provides small helpers used across the blockchain packages:
+// IntToHex for deterministic integer encoding in hashes, ReverseBytes for
+// byte-order conversions, SliceOrNil for iterator end-of-chain. Kept in a
+// separate package so block and work can both use it without depending on each other.
 package utils
 
 import (
